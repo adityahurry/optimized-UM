@@ -1,0 +1,140 @@
+Aditya Hurry and Alex Shankland
+Homework 6: Universal Machine 11/23/15
+
+Help we have received: 
+Aside from some general assistance from the TAs, we’ve
+received no help and haven’t collaborated on our code with anyone else.
+
+To the best of our knowledge, everything has been implemented correctly.
+However, there are several places where we’ve sacrificed operation speed for
+ease of coding and readability. There will be a lot of avenues for us to take
+in the next homework.
+
+Departures from design: 
+- We’ve largely kept true to our original design, with the exception of file
+  names, which we were very free with changing.
+
+- We did decide to provide our processor with a direct copy of the code it was
+  executing in segment[0], both to increase the speed with which it could go
+  through instructions and to allow for easier debugging
+	- (the state of the code and in particular its functional correctness
+	  is now part of the state of the processor, which allows a savvy 
+	  debugger to view its contents).
+
+- We moved our static inline operations (each of the individual instructions) to
+  registers.h, and made them function without knowing where the register values
+  came from or any properties of the registers.
+
+- While we consider this code to be a part of the processor module, we felt it
+  was more readable to have them concentrated into a single visible
+  file.
+
+- Finally, in order to accommodate the processor modification describe above,
+  we added a routine in the segments that would allow the processor to get a
+  direct copy of the code, and to copy a segment in the manager.
+
+Architecture: There are 4 general modules: 
+
+- main.c 
+	- Takes in the filename and calls run_program. It knows nothing about
+	  the back end of the system at all, only how to call run_program.
+
+- processor.c and .h
+	- represent the cpu of the um. They parse and execute the code,
+	  operating on registers they create. They carry with them a segment
+	  manager, the register array, a direct reference to the program in
+	  segment[0], and the ability to perform any of the computer
+	  operations.
+	- It is their responsibility to control and set the
+	  registers, to create the manager and free it upon program
+	  termination, and read the file.
+	- They cannot directly access any segments other than segment[0], and
+	  know nothing about how memory is managed other than that the code is
+	  in segment[0]. Essentially, they know everything a user would know
+	  about our implementation solely through a careful reading of the
+	  specification.
+
+- registers.h
+	- Briefly describes what a register looks like in the um for the user’s
+	  benefit, and provides a list of the available operations and what
+	  they do, in the form of static inline functions.
+	- It knows nothing about the process of running a program, anything
+	  about how memory is managed (except, of course that the code is in
+	  segment[0], which it must know for load_program), or anything about
+	  the registers themselves: each function cares only that the values it
+	  takes in look like what is stored in a register.
+
+segment.c and .h 
+	- Performs all memory management. Does so with the help of a
+	  Segment_Manager struct, which contains the set of mapped segments and
+	  a stack of available ids.
+	- Whenever a segment is mapped, the corresponding ID is equal to the
+	  lowest positive integer which is not already mapped.
+	- While it knows all of the details about memory management, it knows
+	  nothing about the registers or processor, or anything about the UM at
+	  all. The only exception is that it knows segment 0 is special and
+	  that the user wants to be able to directly access it at any point. It
+	  trusts the user to be responsible about the usage of that specific
+	  segment.
+
+Time for 50 million instructions: 
+2.7 seconds. 
+
+How we established this: 
+We temporarily added an instruction counter to our run_program loop that
+started at 0, incremented up by 1, and called exit(0) as soon as it hit 50
+million. We found it to take 2.7 seconds to reach this benchmark. This does not
+account for time spent reading in the code from a file, but we consider the
+number to be a reasonable benchmark, since reading in the file takes up on
+average only 15% of the time running the program.
+
+UMtests: 
+There was one test per register instruction:
+1. halt.um
+	- Program halts
+	- Printing something to stdout is an error
+2. output.um
+	- Outputs 0 to stdout
+3. input.um
+	- Takes input from stdin, outputs it to stdout
+	- If the input and output don't match, that is an error
+4. loadval.um
+	- Loads 75 into a register, then outputs it as char 'K'
+	- If output is any different, that is an error
+5. add.um
+	- Takes two inputs from stdin, adds them together and outputs the
+	  result to stdout
+	- If the output is not correct, that is an error
+6. multiply.um
+	- Takes two inputs from stdin, multiplies them together, outputs the
+	  result to stdout
+	- If the output is not the correct product, that is an error
+7. divide.um
+	- Divides 120 by 3, outputting the result as a char
+	- If the output is not '(', that is an error
+8. nand.um
+	- Takes input from stdin, nands it twice and outputs the result
+	- If output is different from input, that is an error
+9. move.um
+	- Takes input from stdin, if input is anything other than 't', outputs
+	  't' to stdout
+10. segmap.um
+	- Maps a segment of length 97, adds it to 97, and outputs the result as
+	  as a character.
+	- If the output is not a 'b', that is an error
+11. segunmap.um
+	- Maps, unmaps and remaps a segment of length 1, storing the assigned
+	  ID each time. If the assigned IDs for both mappings match, prints out
+	  't', else, prints an 'f'
+12. segstore.um
+	- Stores a value of 1 into a segment, then loads it back. If the two
+	  values do not match, then prints out an 'f', else prints a 't'
+	- This serves as a test of both segload and segstore.
+13. loadprog.um
+	- Loads a program, effectively skipping 1 call to output. A success is
+	  printing an 'X', else prints a 'P'
+
+Hours spent analyzing the assignment: 2.5 hours. 
+Hours spent preparing the design: 6-7 hours
+Hours spent solving the problems/creating the UM: 12 hours. 
+
